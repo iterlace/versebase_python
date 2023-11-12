@@ -29,7 +29,7 @@ anytree = "^2.9.0"
 optional = true
 
 [tool.poetry.group.test.dependencies]
-# fastapi = {version = "0.103.2", extras = ["all"]}
+fastapi = {version = "0.104.1", extras = ["all"]}
 pytest = "7.4.2"
 sqlalchemy-stubs = "^0.4"
 pytest-asyncio = "0.21.1"
