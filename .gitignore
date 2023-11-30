@@ -43,3 +43,5 @@ venv3.8
 
 # Tests
 .pytest_cache/
+
+/data/

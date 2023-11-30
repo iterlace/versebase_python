@@ -9,6 +9,7 @@ from pydantic import (
     PositiveInt,
     PostgresDsn,
     TypeAdapter,
+    DirectoryPath,
     ValidationInfo,
     field_validator,
 )
@@ -25,6 +26,8 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: Optional[HttpUrl] = None
 
+    DB_DATA_PATH: DirectoryPath
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
         env_file="app/core/config/local.env",
@@ -38,4 +41,3 @@ class Settings(BaseSettings):
         if not v:
             return "production"
         return v
-

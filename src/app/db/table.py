@@ -4,8 +4,10 @@ import dataclasses
 from typing import Any, Dict, List, Type, Tuple, Optional
 from collections import OrderedDict
 
+import pydantic
+
 from .index import TableIndex
-from .datatypes import Int, DType
+from .datatypes import Int, DType, serialize_dtype, deserialize_dtype
 
 # Constants
 DELIMITER_SIZE = 8
@@ -24,25 +26,44 @@ class FilePointerCorruptError(TableError):
     pass
 
 
-@dataclasses.dataclass
-class Field:
+class Field(pydantic.BaseModel):
     name: str
     datatype: Type[DType]
     nullable: bool = False
 
+    def __init__(
+        self, name: str, datatype: Type[DType], nullable: bool = False, **kwargs
+    ) -> None:
+        super().__init__(name=name, datatype=datatype, nullable=nullable, **kwargs)
 
-@dataclasses.dataclass
-class TableSchema:
-    fields: dict[str, Field]
+    @pydantic.field_serializer("datatype")
+    def serialize_dt(self, dt: Type[DType], _info: Any) -> str:
+        return serialize_dtype(dt)
 
-    def __init__(self, fields: dict[str, Field]):
-        for k, field in fields.items():
+    @pydantic.field_validator("datatype")
+    @classmethod
+    def deserialize_dt(cls, dt: str | Type[DType]) -> Type[DType]:
+        if isinstance(dt, str):
+            return deserialize_dtype(dt)
+
+        return dt
+
+
+class TableSchema(pydantic.BaseModel):
+    fields: OrderedDict[str, Field]
+
+    @pydantic.field_validator("fields")
+    @classmethod
+    def validate_fields(cls, v: OrderedDict[str, Field]) -> dict[str, Field]:
+        if len(v) == 0:
+            raise ValueError("TableSchema must have at least one field")
+        for k, field in v.items():
             if k == "id" and field.name == "id":
                 if field.datatype is Int:
                     break
         else:
             raise ValueError("TableSchema must have an 'id' field of dtype Int")
-        self.fields = OrderedDict(fields)
+        return v
 
     def __str__(self):
         fields = ", ".join(

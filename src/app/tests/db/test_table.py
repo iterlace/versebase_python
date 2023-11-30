@@ -98,20 +98,22 @@ class TestTable:
             os.remove(path + ".idx")
 
     def test_table_initialization(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int)})
+        schema = TableSchema(fields={"id": Field("id", Int)})
         table = Table("test_table", filepath, schema)
         assert table.name == "test_table"
         assert isinstance(table.file, TableFile)
         assert isinstance(table.index, TableIndex)
 
     def test_get_row_non_existing(self, filepath, mocker):
-        schema = TableSchema({"id": Field("id", Int)})
+        schema = TableSchema(fields={"id": Field("id", Int)})
         table = Table("test_table", filepath, schema)
         with pytest.raises(ValueError):
             table.get(99)
 
     def test_create_and_get_row(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int), "name": Field("name", Str)})
+        schema = TableSchema(
+            fields={"id": Field("id", Int), "name": Field("name", Str)}
+        )
         table = Table("test_table", filepath, schema)
         idx = table.create(Row(schema, (Int(1), Str("Alice"))))
         assert idx >= 0
@@ -120,7 +122,9 @@ class TestTable:
         assert retrieved_row.values["name"] == Str("Alice")
 
     def test_select_rows_with_data(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int), "name": Field("name", Str)})
+        schema = TableSchema(
+            fields={"id": Field("id", Int), "name": Field("name", Str)}
+        )
         table = Table("test_table", filepath, schema)
         # Creating multiple rows
         table.create(Row(schema, (Int(-1), Str("Alice"))))
@@ -133,7 +137,9 @@ class TestTable:
             assert row.values["name"] == Str("Alice")
 
     def test_create_row(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int), "name": Field("name", Str)})
+        schema = TableSchema(
+            fields={"id": Field("id", Int), "name": Field("name", Str)}
+        )
         table = Table("test_table", filepath, schema)
         idx = table.create(Row(schema, (Int(-1), Str("Alice"))))
         assert idx >= 0
@@ -142,7 +148,9 @@ class TestTable:
         assert retrieved_row.values["name"] == Str("Alice")
 
     def test_update_row(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int), "name": Field("name", Str)})
+        schema = TableSchema(
+            fields={"id": Field("id", Int), "name": Field("name", Str)}
+        )
         table = Table("test_table", filepath, schema)
         idx = table.create(Row(schema, (Int(-1), Str("Alice"))))
 
@@ -154,7 +162,9 @@ class TestTable:
         assert updated_row.values["name"] == Str("Bob")
 
     def test_delete_row(self, filepath: str) -> None:
-        schema = TableSchema({"id": Field("id", Int), "name": Field("name", Str)})
+        schema = TableSchema(
+            fields={"id": Field("id", Int), "name": Field("name", Str)}
+        )
         table = Table("test_table", filepath, schema)
         idx = table.create(Row(schema, (Int(-1), Str("Alice"))))
         table.delete(idx)

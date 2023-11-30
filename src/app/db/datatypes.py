@@ -76,3 +76,21 @@ class Bool(DataType[bool]):
 
 
 DType = Union[Int, Str, Bool, DateTime]
+
+
+def serialize_dtype(dt: Type[DType]) -> str:
+    return dt.__name__
+
+
+def deserialize_dtype(name: str) -> Type[DType]:
+    match name:
+        case "Int":
+            return Int
+        case "Str":
+            return Str
+        case "Bool":
+            return Bool
+        case "DateTime":
+            return DateTime
+        case _:
+            raise ValueError(f"unknown dtype: {name}")
