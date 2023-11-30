@@ -12,6 +12,7 @@ pydantic = "^2.4.2"
 fastapi = "^0.104.1"
 uvicorn = "^0.23.2"
 pydantic-settings = "^2.0.3"
+sortedcontainers = "^2.4.0"
 
 [tool.poetry.group.dev]
 optional = true

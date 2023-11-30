@@ -1,15 +1,11 @@
-import io
 import os
-import struct
 import typing
 import dataclasses
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Type, Tuple, Union, Optional
+from typing import Any, Dict, List, Type, Tuple, Optional
 from collections import OrderedDict
 
-import pydantic
-
-from .datatypes import DType
+from .index import TableIndex
+from .datatypes import Int, DType
 
 # Constants
 DELIMITER_SIZE = 8
@@ -38,6 +34,15 @@ class Field:
 @dataclasses.dataclass
 class TableSchema:
     fields: dict[str, Field]
+
+    def __init__(self, fields: dict[str, Field]):
+        for k, field in fields.items():
+            if k == "id" and field.name == "id":
+                if field.datatype is Int:
+                    break
+        else:
+            raise ValueError("TableSchema must have an 'id' field of dtype Int")
+        self.fields = OrderedDict(fields)
 
     def __str__(self):
         fields = ", ".join(
@@ -180,32 +185,84 @@ class Table:
         name: str,
         filepath: str,
         schema: TableSchema,
-        index: Optional[Any] = None,
     ):
         self.name = name
         self.file = TableFile(filepath, schema)
-        self.index = index
+        self.index = TableIndex(filepath + ".idx")
 
     def get(self, id_: int) -> Row:
-        pass
+        pos = self.index.get(id_)
+        if pos is None:
+            raise ValueError(f"Row with id {id_} does not exist")
+        self.file.seek(pos)
+        row = self.file.read_row()
+        if row is None:
+            raise ValueError(f"Row with id {id_} does not exist")
+        return row[0]
 
-    def select(self, filter_: Dict[str, Any]) -> List[Row]:
-        pass
+    def select(self, filter_: Dict[str, DType]) -> List[Row]:
+        rows = []
+        self.file.seek(0)
+        while not self.file.at_end():
+            row_ = self.file.read_row()
+            if row_ is None:
+                break
+            row: Row = row_[0]
+
+            for k, v in filter_.items():
+                if row.values[k] != v:
+                    break
+            else:
+                rows.append(row)
+        return rows
 
     def create(self, row: Row) -> int:
-        pass
+        row.values["id"] = Int(self.index.get_next_id())
 
-    def update(self, row: Row) -> None:
-        pass
+        begin, end = self.file.write_row(row)
+        self.index.set(row.values["id"].value, begin)
+        return row.values["id"].value
 
-    def delete(self, id_: int) -> None:
-        pass
+    def update(self, row: Row) -> int:
+        deleted = self.delete(row.values["id"].value)
+        if deleted == 0:
+            return 0
+        self.file.seek(-1)
+
+        begin, end = self.file.write_row(row)
+        self.index.set(row.values["id"].value, begin)
+        return 1
+
+    def delete(self, id_: int) -> int:
+        if (r := self.find(id_)) is None:
+            return 0
+        else:
+            row, begin, end = r
+
+        self.file.erase(begin, end)
+        self.refresh_indexes()
+        return 1
 
     def find(self, id_: int) -> Optional[Tuple[Row, int, int]]:
-        pass
+        self.file.seek(0)
+        while not self.file.at_end():
+            row_ = self.file.read_row()
+            if row_ is None:
+                break
+            row, begin, end = row_
+            if row.values["id"].value == id_:
+                return row, begin, end
+        return None
 
     def refresh_indexes(self) -> None:
-        pass
+        self.index.clear()
+        self.file.seek(0)
+        while not self.file.at_end():
+            row_ = self.file.read_row()
+            if row_ is None:
+                break
+            row, begin, end = row_
+            self.index.set(row.values["id"].value, begin)
 
     @classmethod
     def schema_info(cls):

@@ -9,6 +9,8 @@ T = TypeVar("T", int, str, datetime.datetime, bool)
 
 @dataclasses.dataclass
 class DataType(abc.ABC, Generic[T]):
+    """DataType is a container for a value of a specific type."""
+
     value: T
 
     @classmethod
