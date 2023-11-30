@@ -13,6 +13,8 @@ fastapi = "^0.104.1"
 uvicorn = "^0.23.2"
 pydantic-settings = "^2.0.3"
 sortedcontainers = "^2.4.0"
+pytest = "7.4.2"
+parsimonious = "^0.10.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -31,7 +33,6 @@ optional = true
 
 [tool.poetry.group.test.dependencies]
 fastapi = {version = "0.104.1", extras = ["all"]}
-pytest = "7.4.2"
 sqlalchemy-stubs = "^0.4"
 pytest-asyncio = "0.21.1"
 fakeredis = "^2.18.1"
