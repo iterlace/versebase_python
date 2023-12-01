@@ -18,7 +18,6 @@ from app.cli.parser import (
     UpdateQuery,
     QueryVisitor,
     DropTableQuery,
-    FieldWithDType,
     CreateTableQuery,
 )
 from app.db.datatypes import Int, Str, Bool, DType, DateTime
@@ -28,7 +27,7 @@ def dtype_to_value(value: DType) -> str:
     if isinstance(value, Int):
         return str(value.value)
     elif isinstance(value, Str):
-        return f'"{value.value}"'
+        return f"'{value.value}'"
     elif isinstance(value, Bool):
         return str(value.value).lower()
     elif isinstance(value, DateTime):
@@ -50,11 +49,13 @@ def value_to_dtype(value: str, dtype: Type[DType]) -> DType:
         raise ValueError(f"Unsupported dtype: {dtype}")
 
 
-def print_rows(rows: Sequence[Row]) -> None:
+def print_rows(rows: Sequence[Row], fields: Sequence[str]) -> None:
     printed_rows: list[tuple[str]] = []
-    printed_rows.append(tuple(rows[0].values.keys()))
+    printed_rows.append(tuple(fields))
     for row in rows:
-        printed_rows.append(tuple(dtype_to_value(v) for v in row.values.values()))
+        printed_rows.append(
+            tuple(dtype_to_value(row.values[field]) for field in fields)
+        )
 
     col_widths = [max(len(str(x)) for x in col) for col in zip(*printed_rows)]
     for row in printed_rows:
@@ -94,8 +95,12 @@ class Executor:
             print(f"Table {query.table} does not exist!")
             return
 
-        results = table.select(query.conditions)
-        print_rows(results)
+        parsed_conditions = {
+            k: value_to_dtype(v, table.schema.fields[k].datatype)
+            for k, v in query.conditions.items()
+        }
+        results = table.select(parsed_conditions)
+        print_rows(results, query.fields)
 
     def insert(self, query: InsertQuery) -> None:
         table = self.get_table(query.table)
@@ -109,7 +114,7 @@ class Executor:
             values=query.values,
         )
         table.create(row)
-        print_rows([row])
+        print_rows([row], list(table.schema.fields.keys()))
 
     def update(self, query: UpdateQuery) -> None:
         table = self.get_table(query.table)

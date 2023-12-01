@@ -248,12 +248,7 @@ class TableFile:
 
 
 class Table:
-    def __init__(
-        self,
-        name: str,
-        filepath: str,
-        schema: TableSchema,
-    ):
+    def __init__(self, name: str, filepath: str, schema: TableSchema):
         self.name = name
         self.file = TableFile(filepath, schema)
         self.index = TableIndex(filepath + ".idx")
@@ -283,6 +278,8 @@ class Table:
                     break
             else:
                 rows.append(row)
+
+        rows.sort(key=lambda row: row.values["id"].value)  # low-performant? yes it is.
         return rows
 
     def create(self, row: Row) -> int:
