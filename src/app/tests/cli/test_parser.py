@@ -7,7 +7,11 @@ from app.cli.parser import (
     SelectQuery,
     UpdateQuery,
     QueryVisitor,
+    DropTableQuery,
+    FieldWithDType,
+    CreateTableQuery,
 )
+from app.db.datatypes import Int, Str, Bool, DType, DateTime
 
 
 def test_select_single_filter():
@@ -62,6 +66,30 @@ def test_delete_query_parsing():
     assert isinstance(result, DeleteQuery)
     assert result.table == "users"
     assert result.id == 1
+
+
+def test_create_table():
+    query = "CREATE TABLE users (id: Int, name: Str, birthday: DateTime, is_gay: Bool)"
+    tree = QUERY_GRAMMAR.parse(query)
+    visitor = QueryVisitor()
+    result = visitor.visit(tree)
+    assert isinstance(result, CreateTableQuery)
+    assert result.table == "users"
+    assert result.fields == [
+        FieldWithDType(field="id", dtype=Int),
+        FieldWithDType(field="name", dtype=Str),
+        FieldWithDType(field="birthday", dtype=DateTime),
+        FieldWithDType(field="is_gay", dtype=Bool),
+    ]
+
+
+def test_drop_table():
+    query = "DROP TABLE users"
+    tree = QUERY_GRAMMAR.parse(query)
+    visitor = QueryVisitor()
+    result = visitor.visit(tree)
+    assert isinstance(result, DropTableQuery)
+    assert result.table == "users"
 
 
 def test_invalid_query():

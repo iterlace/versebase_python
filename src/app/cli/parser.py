@@ -1,24 +1,31 @@
 import enum
 import datetime as dt
 import dataclasses
-from typing import Any, Dict, List, Self, Sequence
+from typing import Any, Dict, List, Self, Type, Sequence
 
 from parsimonious.nodes import Node, NodeVisitor
 from parsimonious.grammar import Grammar
 from parsimonious.exceptions import ParseError
 
+from app.db.datatypes import Int, Str, Bool, DType, DateTime
+
 QUERY_GRAMMAR = Grammar(
     """\
-grammar = command+
+grammar = ws* command ws*
 
-command = select / update / delete
+command = select / update / delete / create_table / drop_table
 
-select = "SELECT" ws fields ws "FROM" ws table_name ws ("WHERE" ws conditions)?
-update = "UPDATE" ws table_name ws "SET" ws updates ws "WHERE" ws "id" ws* "=" ws* int
-delete = "DELETE FROM" ws table_name ws "WHERE" ws "id" ws* "=" ws* int
+select = "SELECT" ws+ fields ws+ "FROM" ws+ table_name ws+ ("WHERE" ws conditions)?
+update = "UPDATE" ws+ table_name ws+ "SET" ws updates ws+ "WHERE" ws+ "id" ws* "=" ws* int
+delete = "DELETE FROM" ws+ table_name ws+ "WHERE" ws+ "id" ws* "=" ws* int
+create_table = "CREATE TABLE" ws+ table_name ws+ "(" ws* fields_with_dtypes ws* ")"
+drop_table = "DROP TABLE" ws+ table_name
 
-fields = field (ws? "," ws? field)*
+fields = field (ws* "," ws* field)*
 field = ~"[a-zA-Z0-9_]+"
+
+fields_with_dtypes = field_with_dtype (ws* "," ws* field_with_dtype)*
+field_with_dtype = field ws* ":" ws* dtype
 
 table_name = ~"[a-zA-Z0-9_]+"
 
@@ -27,6 +34,8 @@ condition = field ws "=" ws value
 
 updates = update_set (ws? "," ws? update_set)*
 update_set = field ws "=" ws value
+
+dtype = "Int" / "Str" / "DateTime" / "Bool"
 
 value = bool / int / str / datetime
 
@@ -53,6 +62,27 @@ ws = ~"\s*"
 
 
 @dataclasses.dataclass
+class FieldWithDType:
+    def __init__(self, field: str, dtype: Type[DType]):
+        self.field = field
+        self.dtype = dtype
+
+    def __str__(self):
+        return f"{self.field}: {self.dtype}"
+
+
+@dataclasses.dataclass
+class CreateTableQuery:
+    table: str
+    fields: List[FieldWithDType]
+
+
+@dataclasses.dataclass
+class DropTableQuery:
+    table: str
+
+
+@dataclasses.dataclass
 class SelectQuery:
     table: str
     fields: List[str]
@@ -74,7 +104,7 @@ class DeleteQuery:
 
 class QueryVisitor(NodeVisitor):
     def visit_grammar(self, node, visited_children):
-        return visited_children[0]
+        return visited_children[1]
 
     def visit_command(self, node, visited_children):
         return visited_children[0]
@@ -92,6 +122,14 @@ class QueryVisitor(NodeVisitor):
         _, _, table_name, _, _, _, _, _, _, _, id_ = visited_children
         return DeleteQuery(table=table_name, id=id_)
 
+    def visit_create_table(self, node, visited_children) -> CreateTableQuery:
+        _, _, table_name, _, _, _, fields, _, _ = visited_children
+        return CreateTableQuery(table=table_name, fields=fields)
+
+    def visit_drop_table(self, node, visited_children) -> DropTableQuery:
+        _, _, table_name = visited_children
+        return DropTableQuery(table=table_name)
+
     def visit_fields(self, node, visited_children):
         # Extract field names from visited children, ignoring commas and whitespace
         fields = []
@@ -104,6 +142,26 @@ class QueryVisitor(NodeVisitor):
 
     def visit_field(self, node, visited_children):
         return node
+
+    def visit_fields_with_dtypes(self, node, visited_children) -> list[FieldWithDType]:
+        fields: list[FieldWithDType] = []
+        for child in visited_children:
+            if isinstance(child, FieldWithDType):
+                fields.append(child)
+            if isinstance(child, list):
+                fields.extend(self.visit_fields_with_dtypes(None, child))
+        return fields
+
+    def visit_field_with_dtype(self, node, visited_children) -> FieldWithDType:
+        return FieldWithDType(field=visited_children[0], dtype=visited_children[4])
+
+    def visit_dtype(self, node, visited_children) -> DType:
+        return {
+            "Int": Int,
+            "Str": Str,
+            "DateTime": DateTime,
+            "Bool": Bool,
+        }[node.text]
 
     def visit_table_name(self, node, visited_children):
         return node.text
