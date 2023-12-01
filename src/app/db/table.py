@@ -1,6 +1,5 @@
 import os
 import typing
-import dataclasses
 from typing import Any, Dict, List, Type, Tuple, Optional
 from collections import OrderedDict
 
@@ -109,12 +108,22 @@ class TableFile:
         self.filepath = filepath
         self.schema = schema
         self.file = self.init_file(filepath)
+        self.is_closed = False
+
+    def __del__(self) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self.is_closed = True
+        self.file.close()
 
     @staticmethod
     def init_file(path: str) -> typing.BinaryIO:
         return open(path, "a+b", buffering=0)
 
     def seek(self, pos: int) -> None:
+        assert not self.is_closed
+
         if pos >= 0:
             self.file.seek(pos, os.SEEK_SET)
         else:
@@ -124,12 +133,18 @@ class TableFile:
                 raise ValueError("Tried to access negative position")
 
     def position(self) -> int:
+        assert not self.is_closed
+
         return self.file.tell()
 
     def at_beginning(self) -> bool:
+        assert not self.is_closed
+
         return self.position() == 0
 
     def at_end(self) -> bool:
+        assert not self.is_closed
+
         current_pos = self.position()
         self.file.seek(0, os.SEEK_END)
         end_pos = self.position()
@@ -137,6 +152,8 @@ class TableFile:
         return current_pos == end_pos
 
     def read_row(self) -> Optional[Tuple[Row, int, int]]:
+        assert not self.is_closed
+
         if self.at_end():
             return None
 
@@ -174,6 +191,8 @@ class TableFile:
         return Row.from_raw(self.schema, fields_raw), pos_begin, pos_end
 
     def write_row(self, row: Row) -> Tuple[int, int]:
+        assert not self.is_closed
+
         self.seek(-1)
 
         begin_pos = self.position()
@@ -189,6 +208,8 @@ class TableFile:
         return begin_pos, end_pos
 
     def erase(self, begin: int, end: int) -> None:
+        assert not self.is_closed
+
         if begin >= end:
             raise ValueError("Begin position must be less than end position")
 
