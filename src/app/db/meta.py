@@ -2,7 +2,6 @@ from typing import Any, Dict, List, Type, Union, Optional
 
 import pydantic
 
-from app.db.table import Field as TableField
 from app.db.table import TableSchema
 
 
