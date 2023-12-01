@@ -4,6 +4,7 @@ from app.cli.parser import (
     QUERY_GRAMMAR,
     ParseError,
     DeleteQuery,
+    InsertQuery,
     SelectQuery,
     UpdateQuery,
     QueryVisitor,
@@ -14,6 +15,17 @@ from app.cli.parser import (
 from app.db.datatypes import Int, Str, Bool, DType, DateTime
 
 
+def test_select_no_filter():
+    query = "SELECT id FROM users"
+    tree = QUERY_GRAMMAR.parse(query)
+    visitor = QueryVisitor()
+    result = visitor.visit(tree)
+    assert isinstance(result, SelectQuery)
+    assert result.table == "users"
+    assert result.fields == ["id"]
+    assert result.conditions == {}
+
+
 def test_select_single_filter():
     query = "SELECT id FROM users WHERE name = 'Alice'"
     tree = QUERY_GRAMMAR.parse(query)
@@ -22,7 +34,7 @@ def test_select_single_filter():
     assert isinstance(result, SelectQuery)
     assert result.table == "users"
     assert result.fields == ["id"]
-    assert result.conditions == [{"name": "Alice"}]
+    assert result.conditions == {"name": "Alice"}
 
 
 def test_select_multiple_filters():
@@ -33,7 +45,17 @@ def test_select_multiple_filters():
     assert isinstance(result, SelectQuery)
     assert result.table == "users"
     assert result.fields == ["id", "name"]
-    assert result.conditions == [{"id": 1}, {"name": "Alice"}]
+    assert result.conditions == {"id": 1, "name": "Alice"}
+
+
+def test_insert():
+    query = "INSERT INTO users id = 1, name = 'Alice'"
+    tree = QUERY_GRAMMAR.parse(query)
+    visitor = QueryVisitor()
+    result = visitor.visit(tree)
+    assert isinstance(result, InsertQuery)
+    assert result.table == "users"
+    assert result.values == {"id": 1, "name": "Alice"}
 
 
 def test_update_single_set():

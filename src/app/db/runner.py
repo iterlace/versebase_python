@@ -12,28 +12,29 @@ from .meta import Metadata, TableMeta
 
 class Database:
     def __init__(self):
-        self.data_root = settings.DB_DATA_PATH.absolute()
-        self.metadata_path = self.data_root / "meta.json"
-        self.metadata = self.read_metadata()
+        self.data_root = str(settings.DB_DATA_PATH.absolute())
+        self.metadata_path = os.path.join(self.data_root, "meta.json")
+        self.metadata = self._read_metadata()
 
         # state
         self.tables = SortedDict()
+        self._init_tables()
 
-    def read_metadata(self):
+    def _read_metadata(self):
         if os.path.exists(self.metadata_path):
             with open(self.metadata_path, "r") as f:
                 return Metadata.model_validate_json(f.read())
         else:
             meta = Metadata()
-            self.write_metadata(override=meta)
+            self._write_metadata(override=meta)
         return meta
 
-    def write_metadata(self, override: Optional[Metadata] = None):
+    def _write_metadata(self, override: Optional[Metadata] = None):
         meta = override or self.metadata
         with open(self.metadata_path, "w") as f:
             f.write(json.dumps(meta.model_dump(mode="json")))
 
-    def init_tables(self) -> None:
+    def _init_tables(self) -> None:
         for table in self.metadata.tables:
             self.tables[table.name] = Table(
                 name=table.name,
@@ -52,7 +53,7 @@ class Database:
         self.metadata.tables.append(
             TableMeta(name=name, filename=filename, schema=schema)
         )
-        self.write_metadata()
+        self._write_metadata()
         table = Table(
             name=name,
             filepath=os.path.join(self.data_root, filename),
@@ -68,13 +69,15 @@ class Database:
             raise ValueError(f"Table {name} does not exist")
         table: Table = self.tables[name]
 
+        # close fd and delete the file
+        table.file.close()
+        table.index.close()
+        os.remove(table.file.filepath)
+        os.remove(table.index.filepath)
+
         # remove the table from app's state and metadata
         self.tables.pop(name)
         self.metadata.tables = [
             table for table in self.metadata.tables if table.name != name
         ]
-        self.write_metadata()
-
-        # close fd and delete the file
-        table.file.close()
-        os.remove(table.file.filepath)
+        self._write_metadata()

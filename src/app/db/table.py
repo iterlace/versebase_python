@@ -39,7 +39,7 @@ class Field(pydantic.BaseModel):
     def serialize_dt(self, dt: Type[DType], _info: Any) -> str:
         return serialize_dtype(dt)
 
-    @pydantic.field_validator("datatype")
+    @pydantic.field_validator("datatype", mode="before")
     @classmethod
     def deserialize_dt(cls, dt: str | Type[DType]) -> Type[DType]:
         if isinstance(dt, str):
@@ -81,7 +81,33 @@ class Row:
         )
 
     @classmethod
-    def from_raw(cls, schema: TableSchema, raw: list[bytes]) -> "Row":
+    def from_dict(cls, schema: TableSchema, values: dict[str, DType]) -> "Row":
+        values_list: list[DType] = []
+        for field in schema.fields.values():
+            if field.name not in values:
+                if field.nullable:
+                    values_list.append(None)
+                else:
+                    raise ValueError(f"You must specify a value for {field}!")
+            elif values[field.name] is None:
+                if not field.nullable:
+                    raise ValueError(f"Passed None to non-nullable field {field}!")
+                values_list.append(None)
+            else:
+                values_list.append(values[field.name])
+        return cls(schema, tuple(values_list))
+
+    @classmethod
+    def from_raw_dict(cls, schema: TableSchema, values: dict[str, Any]) -> "Row":
+        parsed_values = {}
+        for field_name, field_data in values.items():
+            field = schema.fields[field_name]
+            parsed_values[field_name] = field.datatype(field_data)
+
+        return cls.from_dict(schema, parsed_values)
+
+    @classmethod
+    def from_bytes(cls, schema: TableSchema, raw: list[bytes]) -> "Row":
         values = []
         for field_name, field_data in zip(schema.fields.keys(), raw):
             field = schema.fields[field_name]
@@ -188,7 +214,7 @@ class TableFile:
         assert len(fields_raw) == len(self.schema.fields.keys())
 
         pos_end = self.position()
-        return Row.from_raw(self.schema, fields_raw), pos_begin, pos_end
+        return Row.from_bytes(self.schema, fields_raw), pos_begin, pos_end
 
     def write_row(self, row: Row) -> Tuple[int, int]:
         assert not self.is_closed
@@ -231,6 +257,7 @@ class Table:
         self.name = name
         self.file = TableFile(filepath, schema)
         self.index = TableIndex(filepath + ".idx")
+        self.schema = schema
 
     def get(self, id_: int) -> Row:
         pos = self.index.get(id_)

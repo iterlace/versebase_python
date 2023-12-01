@@ -1,7 +1,7 @@
 import enum
 import datetime as dt
 import dataclasses
-from typing import Any, Dict, List, Self, Type, Sequence
+from typing import Any, Dict, List, Self, Type, Union, Sequence
 
 from parsimonious.nodes import Node, NodeVisitor
 from parsimonious.grammar import Grammar
@@ -13,10 +13,11 @@ QUERY_GRAMMAR = Grammar(
     """\
 grammar = ws* command ws*
 
-command = select / update / delete / create_table / drop_table
+command = select / update / insert / delete / create_table / drop_table
 
-select = "SELECT" ws+ fields ws+ "FROM" ws+ table_name ws+ ("WHERE" ws conditions)?
-update = "UPDATE" ws+ table_name ws+ "SET" ws updates ws+ "WHERE" ws+ "id" ws* "=" ws* int
+select = "SELECT" ws+ fields ws+ "FROM" ws+ table_name (ws+ "WHERE" ws conditions)?
+insert = "INSERT INTO" ws+ table_name ws+ updates
+update = "UPDATE" ws+ table_name ws+ "SET" ws+ updates ws+ "WHERE" ws+ "id" ws* "=" ws* int
 delete = "DELETE FROM" ws+ table_name ws+ "WHERE" ws+ "id" ws* "=" ws* int
 create_table = "CREATE TABLE" ws+ table_name ws+ "(" ws* fields_with_dtypes ws* ")"
 drop_table = "DROP TABLE" ws+ table_name
@@ -32,8 +33,8 @@ table_name = ~"[a-zA-Z0-9_]+"
 conditions = condition (ws "AND" ws condition)*
 condition = field ws "=" ws value
 
-updates = update_set (ws? "," ws? update_set)*
-update_set = field ws "=" ws value
+updates = update_set (ws* "," ws* update_set)*
+update_set = field ws? "=" ws? value
 
 dtype = "Int" / "Str" / "DateTime" / "Bool"
 
@@ -61,43 +62,52 @@ ws = ~"\s*"
 )
 
 
+class Command:
+    pass
+
+
 @dataclasses.dataclass
 class FieldWithDType:
-    def __init__(self, field: str, dtype: Type[DType]):
-        self.field = field
-        self.dtype = dtype
+    field: str
+    dtype: Type[DType]
 
     def __str__(self):
         return f"{self.field}: {self.dtype}"
 
 
 @dataclasses.dataclass
-class CreateTableQuery:
+class CreateTableQuery(Command):
     table: str
     fields: List[FieldWithDType]
 
 
 @dataclasses.dataclass
-class DropTableQuery:
+class DropTableQuery(Command):
     table: str
 
 
 @dataclasses.dataclass
-class SelectQuery:
+class SelectQuery(Command):
     table: str
     fields: List[str]
-    conditions: List[Dict[str, Any]]
+    conditions: Dict[str, Any]
 
 
 @dataclasses.dataclass
-class UpdateQuery:
+class InsertQuery(Command):
+    table: str
+    values: Dict[str, Any]
+
+
+@dataclasses.dataclass
+class UpdateQuery(Command):
     table: str
     updates: Dict[str, Any]
     id: int
 
 
 @dataclasses.dataclass
-class DeleteQuery:
+class DeleteQuery(Command):
     table: str
     id: int
 
@@ -110,9 +120,20 @@ class QueryVisitor(NodeVisitor):
         return visited_children[0]
 
     def visit_select(self, node, visited_children) -> SelectQuery:
-        _, _, fields, _, _, _, table_name, _, conditions = visited_children
-        conditions = conditions[0][2]
+        _, _, fields, _, _, _, table_name, raw_conditions = visited_children
+        conditions = {}
+        if isinstance(raw_conditions, list):
+            conditions_list = raw_conditions[0][3]
+            for cond in conditions_list:
+                for k, v in cond.items():
+                    if k in conditions:
+                        raise ParseError(f"Duplicate condition for field {k}")
+                    conditions[k] = v
         return SelectQuery(table=table_name, fields=fields, conditions=conditions)
+
+    def visit_insert(self, node, visited_children) -> InsertQuery:
+        _, _, table_name, _, updates = visited_children
+        return InsertQuery(table=table_name, values=updates)
 
     def visit_update(self, node, visited_children) -> UpdateQuery:
         _, _, table_name, _, _, _, updates, _, _, _, _, _, _, _, id_ = visited_children
@@ -153,7 +174,7 @@ class QueryVisitor(NodeVisitor):
         return fields
 
     def visit_field_with_dtype(self, node, visited_children) -> FieldWithDType:
-        return FieldWithDType(field=visited_children[0], dtype=visited_children[4])
+        return FieldWithDType(field=visited_children[0].text, dtype=visited_children[4])
 
     def visit_dtype(self, node, visited_children) -> DType:
         return {

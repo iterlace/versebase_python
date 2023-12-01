@@ -31,7 +31,7 @@ class TestTableFile:
 
     @pytest.fixture(scope="function")
     def row(self, schema: TableSchema) -> Row:
-        return Row.from_raw(
+        return Row.from_bytes(
             schema,
             [
                 schema.fields["id"].datatype(value=1).to_bytes(),  # type: ignore[arg-type]

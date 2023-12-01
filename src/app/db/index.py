@@ -10,7 +10,16 @@ class TableIndex:
         self.tree = SortedDict()
         self.file = None
         self.open_file()
+        self.is_closed = False
         self.load()
+
+    def __del__(self):
+        self.close()
+
+    def close(self) -> None:
+        self.dump()
+        self.is_closed = True
+        self.file.close()
 
     def open_file(self) -> None:
         if not os.path.exists(self.filepath):
@@ -18,6 +27,8 @@ class TableIndex:
         self.file = open(self.filepath, "a+b")
 
     def load(self) -> None:
+        assert not self.is_closed
+
         self.file.seek(0)
         while self.file.tell() != os.path.getsize(self.filepath):
             id_bytes = self.file.read(4)
@@ -29,6 +40,9 @@ class TableIndex:
             self.tree[id_] = pos
 
     def dump(self) -> None:
+        if self.is_closed:
+            return
+
         self.file.seek(0)
         self.file.truncate()
         for id_, pos in self.tree.items():
@@ -61,7 +75,3 @@ class TableIndex:
     def clear(self) -> None:
         self.tree.clear()
         self.dump()
-
-    def __del__(self):
-        self.dump()
-        self.file.close()
