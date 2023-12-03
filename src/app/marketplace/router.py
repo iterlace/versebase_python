@@ -12,8 +12,10 @@ from fastapi import (
     UploadFile,
     HTTPException,
 )
+from fastapi.responses import FileResponse
 
 from app.db.table import Row, Field, Table, TableFile, TableSchema
+from app.core.config import settings
 from app.core.storages import storage
 
 from .models import Rat, RatTable, db
@@ -28,6 +30,16 @@ router: APIRouter = APIRouter(
 )
 
 
+#  % settings.MEDIA_URL_PREFIX
+@router.get("%s{file_path:path}" % settings.MEDIA_URL_PREFIX, status_code=200)
+async def read_media(file_path: str) -> FileResponse:
+    filepath = storage._get_filepath(file_path)
+    assert ".." not in filepath
+    if not os.path.isfile(filepath):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(filepath)
+
+
 @router.get("/rats/", status_code=200)
 async def list_rats() -> List[RatRead]:
     rows = RatTable.select()
@@ -38,11 +50,11 @@ async def list_rats() -> List[RatRead]:
 @router.post("/rats/", status_code=201)
 async def create_rat(rat: RatWrite) -> RatRead:
     rat_obj: Rat = rat.to_model()
-    RatTable.create(rat_obj.to_row())
+    rat_obj.id = RatTable.create(rat_obj.to_row())
     return RatRead.from_model(rat_obj)
 
 
-@router.post("/rats/", status_code=201)
+@router.patch("/rats/{rat_id}/", status_code=201)
 async def upload_rat_image(rat_id: int, image: UploadFile) -> RatRead:
     row = RatTable.get(rat_id)
     if row is None:

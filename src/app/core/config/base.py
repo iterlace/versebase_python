@@ -12,6 +12,7 @@ update_workdir()
 
 
 class Settings(BaseSettings):
+    ROOT_URL: HttpUrl
     ENVIRONMENT: Optional[Literal["production", "testing", "development"]] = None
 
     SENTRY_DSN: Optional[HttpUrl] = None
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
 
     STORAGE: Literal["tmp_filesystem", "local"] = "local"
     MEDIA_PATH: DirectoryPath
-    MEDIA_ROOT_URL: HttpUrl
+    MEDIA_URL_PREFIX: str = "/media/"
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
@@ -34,4 +35,13 @@ class Settings(BaseSettings):
     def environment_can_be_blank(cls, v: Optional[str]) -> str:
         if not v:
             return "local"
+        return v
+
+    @field_validator("MEDIA_URL_PREFIX", mode="after")
+    @classmethod
+    def media_url_prefix_must_end_with_slash(cls, v: str) -> str:
+        if not v.startswith("/"):
+            v = "/" + v
+        if not v.endswith("/"):
+            v = v + "/"
         return v

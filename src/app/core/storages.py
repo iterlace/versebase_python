@@ -152,7 +152,7 @@ match settings.STORAGE:
     case "local":
         storage = LocalStorage(
             root=str(settings.MEDIA_PATH),
-            url_root=str(settings.MEDIA_ROOT_URL),
+            url_root=urljoin(str(settings.ROOT_URL), settings.MEDIA_URL_PREFIX),
         )
     case s:
         raise ValueError(f"unsupported storage: {s}")

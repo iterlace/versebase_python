@@ -23,14 +23,11 @@ origins = [
 application.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    # allow_origin_regex=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-application.include_router(app.progress.router.router)
-application.include_router(app.characters.router.router)
-application.include_router(app.admin.router.router)
+application.include_router(app.marketplace.router.router)
 
 
 @application.exception_handler(ValidationError)
