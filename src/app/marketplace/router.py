@@ -74,8 +74,9 @@ async def update_rat(rat_id: int, rat: RatWrite) -> RatRead:
 
 @router.patch("/rats/{rat_id}/", status_code=201)
 async def upload_rat_image(rat_id: int, image: UploadFile) -> RatRead:
-    row = RatTable.get(rat_id)
-    if row is None:
+    try:
+        row = RatTable.get(rat_id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Rat not found")
 
     rat = Rat.from_row(row)
@@ -95,8 +96,9 @@ async def upload_rat_image(rat_id: int, image: UploadFile) -> RatRead:
 
 @router.delete("/rats/{rat_id}/", status_code=204)
 async def delete_rat(rat_id: int) -> None:
-    row = RatTable.get(rat_id)
-    if row is None:
+    try:
+        row = RatTable.get(rat_id)
+    except ValueError:
         raise HTTPException(status_code=404, detail="Rat not found")
 
     RatTable.delete(rat_id)
