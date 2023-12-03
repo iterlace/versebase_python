@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+    web:
+        build:
+          context: .
+        ports:
+          - "8000:8000"
+        volumes:
+          - ./media:/media
+          - ./data:/data
+        env_file:
+          - docker-compose.env
+        command: python app/web.py

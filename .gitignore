@@ -46,3 +46,4 @@ venv3.8
 
 /data/
 /media/
+/docker-compose.env

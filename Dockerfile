@@ -1,4 +1,4 @@
-FROM python:3.11.6-buster
+FROM python:3.11.6-slim-bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN ln -s $(which python3.11) /bin/python
@@ -22,4 +22,4 @@ fi"
 COPY src/ ./
 VOLUME /versebase
 
-EXPOSE 8010
+EXPOSE 8000
