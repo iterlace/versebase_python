@@ -54,6 +54,24 @@ async def create_rat(rat: RatWrite) -> RatRead:
     return RatRead.from_model(rat_obj)
 
 
+@router.put("/rats/{rat_id}/", status_code=201)
+async def update_rat(rat_id: int, rat: RatWrite) -> RatRead:
+    row = RatTable.get(rat_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Rat not found")
+
+    rat_obj = Rat.from_row(row)
+    rat_obj.name = rat.name
+    rat_obj.age_months = rat.age_months
+    rat_obj.gender = rat.gender
+    rat_obj.price = rat.price
+    rat_obj.phone = rat.phone
+    rat_obj.description = rat.description
+
+    RatTable.update(rat_obj.to_row())
+    return RatRead.from_model(rat_obj)
+
+
 @router.patch("/rats/{rat_id}/", status_code=201)
 async def upload_rat_image(rat_id: int, image: UploadFile) -> RatRead:
     row = RatTable.get(rat_id)
