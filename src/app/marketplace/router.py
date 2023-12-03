@@ -91,3 +91,12 @@ async def upload_rat_image(rat_id: int, image: UploadFile) -> RatRead:
     RatTable.update(rat.to_row())
 
     return RatRead.from_model(rat)
+
+
+@router.delete("/rats/{rat_id}/", status_code=204)
+async def delete_rat(rat_id: int) -> None:
+    row = RatTable.get(rat_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Rat not found")
+
+    RatTable.delete(rat_id)
