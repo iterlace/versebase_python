@@ -64,6 +64,11 @@ class Database:
         self.tables[name] = table
         return table
 
+    def get_table(self, name: str) -> Optional[Table]:
+        if name not in self.tables.keys():
+            return None
+        return self.tables[name]
+
     def delete_table(self, name: str) -> None:
         if name not in self.tables.keys():
             raise ValueError(f"Table {name} does not exist")

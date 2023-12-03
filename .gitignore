@@ -45,3 +45,4 @@ venv3.8
 .pytest_cache/
 
 /data/
+/media/

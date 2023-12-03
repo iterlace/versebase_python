@@ -80,6 +80,12 @@ class Row:
             zip(schema.fields.keys(), values)
         )
 
+    def to_dict(self) -> dict[str, DType]:
+        return {k: v for k, v in self.values.items()}
+
+    def to_raw_dict(self) -> dict[str, Any]:
+        return {k: v.value for k, v in self.values.items()}
+
     @classmethod
     def from_dict(cls, schema: TableSchema, values: dict[str, DType]) -> "Row":
         values_list: list[DType] = []
@@ -264,7 +270,10 @@ class Table:
             raise ValueError(f"Row with id {id_} does not exist")
         return row[0]
 
-    def select(self, filter_: Dict[str, DType]) -> List[Row]:
+    def select(self, filter_: Optional[Dict[str, DType]] = None) -> List[Row]:
+        if filter_ is None:
+            filter_ = {}
+
         rows = []
         self.file.seek(0)
         while not self.file.at_end():

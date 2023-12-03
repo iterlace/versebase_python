@@ -2,17 +2,7 @@ import os
 from typing import Any, Dict, Literal, Optional, Sequence
 
 import pydantic
-from pydantic import (
-    HttpUrl,
-    MongoDsn,
-    RedisDsn,
-    PositiveInt,
-    PostgresDsn,
-    TypeAdapter,
-    DirectoryPath,
-    ValidationInfo,
-    field_validator,
-)
+from pydantic import HttpUrl, DirectoryPath, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.config._helpers import update_workdir
@@ -28,6 +18,10 @@ class Settings(BaseSettings):
 
     DB_DATA_PATH: DirectoryPath
 
+    STORAGE: Literal["tmp_filesystem", "local"] = "local"
+    MEDIA_PATH: DirectoryPath
+    MEDIA_ROOT_URL: HttpUrl
+
     model_config = SettingsConfigDict(
         case_sensitive=False,
         env_file="app/core/config/local.env",
@@ -39,5 +33,5 @@ class Settings(BaseSettings):
     @classmethod
     def environment_can_be_blank(cls, v: Optional[str]) -> str:
         if not v:
-            return "production"
+            return "local"
         return v
