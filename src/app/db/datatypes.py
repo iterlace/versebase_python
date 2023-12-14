@@ -4,7 +4,7 @@ import datetime
 import dataclasses
 from typing import Any, List, Type, Union, Generic, TypeVar, ClassVar
 
-T = TypeVar("T", int, str, datetime.datetime, bool)
+T = TypeVar("T", int, str, datetime.datetime, bool, bytes, float)
 
 
 @dataclasses.dataclass
@@ -40,11 +40,41 @@ class Int(DataType[int]):
         return struct.pack(">i", self.value)
 
 
+class Real(DataType[float]):
+    value: float
+
+    def __init__(self, value: float) -> None:
+        super().__init__(value)
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> "Real":
+        return cls(value=struct.unpack(">d", raw)[0])
+
+    def to_bytes(self) -> bytes:
+        return struct.pack(">d", self.value)
+
+
 class Str(DataType[str]):
     value: str
 
     @classmethod
     def from_bytes(cls, raw: bytes) -> "Str":
+        return cls(value=raw.decode("utf-8"))
+
+    def to_bytes(self) -> bytes:
+        return self.value.encode("utf-8")
+
+
+class Char(DataType[str]):
+    value: str
+
+    def __new__(cls, value: str) -> "Char":
+        if len(value) > 1:
+            raise ValueError(f"Char value must be a single character, got {value}")
+        return super().__new__(cls, value[0])
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> "Char":
         return cls(value=raw.decode("utf-8"))
 
     def to_bytes(self) -> bytes:
@@ -75,7 +105,18 @@ class Bool(DataType[bool]):
         return struct.pack("?", self.value)
 
 
-DType = Union[Int, Str, Bool, DateTime]
+class Picture(DataType[bytes]):
+    value: bytes
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> "Picture":
+        return cls(value=raw)
+
+    def to_bytes(self) -> bytes:
+        return self.value
+
+
+DType = Union[Int, Real, Str, Char, Bool, DateTime, Picture]
 
 
 def serialize_dtype(dt: Type[DType]) -> str:
