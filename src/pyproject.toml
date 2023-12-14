@@ -3,19 +3,19 @@ name = "versebase-python"
 version = "0.1.0"
 description = ""
 authors = ["Evgeniy Goncharuck <iterlace.dev@sent.com>"]
-readme = "README.md"
 packages = []
 
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic = "^2.4.2"
-fastapi = "^0.104.1"
+fastapi = "^0.105.0"
 uvicorn = "^0.23.2"
 pydantic-settings = "^2.0.3"
 sortedcontainers = "^2.4.0"
 pytest = "7.4.2"
 parsimonious = "^0.10.0"
 python-multipart = "^0.0.6"
+strawberry-graphql = {extras = ["debug-server"], version = "^0.216.1"}
 
 [tool.poetry.group.dev]
 optional = true
@@ -33,7 +33,7 @@ anytree = "^2.9.0"
 optional = true
 
 [tool.poetry.group.test.dependencies]
-fastapi = {version = "0.104.1", extras = ["all"]}
+fastapi = {version = "0.105.0", extras = ["all"]}
 sqlalchemy-stubs = "^0.4"
 pytest-asyncio = "0.21.1"
 fakeredis = "^2.18.1"

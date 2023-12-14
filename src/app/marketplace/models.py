@@ -4,6 +4,7 @@ from typing import List, Optional
 from collections import OrderedDict
 
 import pydantic
+import strawberry
 
 from app.db.table import Row, Field, Table, TableFile, TableSchema
 from app.db.runner import Database
@@ -14,6 +15,7 @@ from app.core.storages import StorageFile
 db = Database()
 
 
+@strawberry.enum
 class Gender(str, Enum):
     FEMALE = "f"
     MALE = "m"

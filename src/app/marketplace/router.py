@@ -14,10 +14,10 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 
-from app.db.table import Row, Field, Table, TableFile, TableSchema
 from app.core.config import settings
 from app.core.storages import storage
 
+from .gql import graphql_app
 from .models import Rat, RatTable, db
 from .schemas import RatRead, RatWrite
 
@@ -28,6 +28,7 @@ router: APIRouter = APIRouter(
         404: {"description": "Not found"},
     },
 )
+router.include_router(graphql_app, prefix="/graphql")
 
 
 #  % settings.MEDIA_URL_PREFIX

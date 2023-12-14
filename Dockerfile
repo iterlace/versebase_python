@@ -15,8 +15,8 @@ ARG DEBUG=false
 RUN bash -c "\
 cd /versebase; \
 if [ $DEBUG == 'true' ] ; \
-    then python3.11 -m poetry install --with dev --verbose; \
-    else python3.11 -m poetry install --verbose; \
+    then python3.11 -m poetry install --with dev --no-root --verbose; \
+    else python3.11 -m poetry install --no-root --verbose; \
 fi"
 
 COPY src/ ./
